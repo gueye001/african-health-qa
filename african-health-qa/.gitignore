@@ -1,0 +1,25 @@
+# Competition data (not redistributable per Zindi terms)
+data/
+*.csv
+
+# Model checkpoints and large artifacts
+*.safetensors
+*.gguf
+checkpoints/
+merged_model/
+gguf_output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter / Marimo
+.ipynb_checkpoints/
+__marimo__/
+
+# OS
+.DS_Store
