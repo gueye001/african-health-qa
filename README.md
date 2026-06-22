@@ -8,6 +8,10 @@
 [![Modèle](https://img.shields.io/badge/🤗%20Modèle-LoRA%20adapter-yellow)](https://huggingface.co/kgueye001/llama31-african-health-qa-lora)
 [![Données](https://img.shields.io/badge/🤗%20Données-Dataset-green)](https://huggingface.co/datasets/kgueye001/african-health-qa-data)
 
+<br>
+
+<img src="docs/zindi_challenge_card.png" alt="Challenge Zindi — Multilingual Health Question Answering in Low-Resource African Languages by ITU, doté de 5000 USD" width="700">
+
 </div>
 
 ---
