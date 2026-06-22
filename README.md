@@ -1,110 +1,124 @@
-# African Health QA — Assistant médical multilingue
+<div align="center">
 
-Solution pour le challenge Zindi/ITU "Multilingual Health Question Answering
-in Low-Resource African Languages". Étant donné une question de santé
-maternelle/sexuelle/reproductive dans une langue et un pays donnés, le
-système produit une réponse dans la même langue.
+# 🌍 African Health QA
 
-**Score final sur le leaderboard public : 0.620** (Rang : 86e)
+**Assistant de questions-réponses médicales multilingue pour 8 langues africaines**
+
+[![Démo HuggingFace](https://img.shields.io/badge/🤗%20Démo-HuggingFace%20Space-blue)](https://huggingface.co/spaces/kgueye001/african-health-qa)
+[![Modèle](https://img.shields.io/badge/🤗%20Modèle-LoRA%20adapter-yellow)](https://huggingface.co/kgueye001/llama31-african-health-qa-lora)
+[![Données](https://img.shields.io/badge/🤗%20Données-Dataset-green)](https://huggingface.co/datasets/kgueye001/african-health-qa-data)
+
+</div>
+
+---
+
+## Le projet
+
+Une question de santé maternelle, sexuelle ou reproductive, posée dans une
+langue africaine peu dotée en ressources numériques (akan, amharique,
+luganda, swahili...), obtient une réponse fiable, dans la même langue,
+générée par un modèle de langage spécialisé.
+
+Ce projet a été développé dans le cadre du **challenge Zindi/ITU
+"Multilingual Health Question Answering in Low-Resource African
+Languages"** (doté de 5 000 $), où l'objectif était de répondre
+automatiquement à des questions de santé dans 8 combinaisons
+langue × pays, en s'appuyant sur un corpus d'entraînement de ~36 500
+paires question-réponse.
+
+**Score final sur le leaderboard public : 0.620** — soumission actuellement
+en cours de revue de code par les organisateurs.
 
 ```
-LB = 0.37 · ROUGE-1 F1  +  0.37 · ROUGE-L F1  +  0.26 · LLM-Judge
+Score = 0.37 × ROUGE-1 F1  +  0.37 × ROUGE-L F1  +  0.26 × Jugement LLM
 ```
 
-Une démo en ligne est déployée sur HuggingFace Spaces :
-**[kgueye001/african-health-qa](https://huggingface.co/spaces/kgueye001/african-health-qa)**
+## Pourquoi ce projet est intéressant
 
-## Approche
+Au-delà du score, ce projet illustre une chaîne complète de mise en
+production d'un modèle de langage fine-tuné, du prototypage jusqu'au
+déploiement public :
 
-Le pipeline final combine un générateur fine-tuné avec une génération
-augmentée par récupération (RAG) :
+- **Fine-tuning LoRA** d'un LLM 8B sur un corpus multilingue restreint
+- **Pipeline RAG** combinant un retriever multilingue (BGE-M3) et un
+  reranker (CrossEncoder) pour ancrer les générations sur des données
+  réelles
+- **Stratégie de décodage adaptative par langue** — l'échantillonnage
+  aide certaines langues et casse complètement la génération amharique ;
+  le pipeline final route chaque langue vers la méthode qui fonctionne
+  réellement pour elle
+- **Quantification et déploiement gratuit** — modèle fusionné, converti
+  en GGUF 4 bits, servi sur CPU via `llama.cpp` dans une démo Gradio
+  accessible publiquement
+
+## Architecture
 
 ```
-Question --> Embedding BGE-M3 --> Recherche FAISS (index par langue)
-         --> Reranking CrossEncoder --> top-3 contextes
-         --> Llama-3.1-8B-Instruct + LoRA (fine-tuné sur Train+Val)
-         --> Réponse
+Question
+   │
+   ▼
+Embedding BGE-M3 (multilingue, 1024 dim)
+   │
+   ▼
+Recherche FAISS (index dédié par langue)
+   │
+   ▼
+Reranking CrossEncoder  →  top-3 contextes pertinents
+   │
+   ▼
+Llama-3.1-8B-Instruct + LoRA (fine-tuné sur Train+Val)
+   │
+   ▼
+Réponse dans la langue de la question
 ```
 
-| Composant | Choix |
+| Composant | Choix technique |
 |---|---|
 | Modèle de base | `meta-llama/Llama-3.1-8B-Instruct` |
-| Fine-tuning | LoRA (r=16, alpha=32) sur Train, SFT complet avec TRL |
-| Retriever | `BAAI/bge-m3` (embeddings denses multilingues, 1024-dim) |
+| Fine-tuning | LoRA (r=16, α=32), SFT complet via TRL |
+| Retriever | `BAAI/bge-m3` (embeddings denses multilingues) |
 | Reranker | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` |
-| Contexte | Top-3 paires Q-A récupérées par question, index FAISS par langue |
-| Décodage | Greedy pour la plupart des langues ; multi-échantillonnage (n=3) + sélection CrossEncoder pour les subsets hors amharique |
+| Décodage | Greedy déterministe pour l'amharique ; échantillonnage (n=3) + sélection CrossEncoder pour les autres langues |
+| Déploiement | GGUF Q4_K_M (4,9 Go), inférence CPU via `llama-cpp-python` |
 
-### Corrections clés qui ont fait la différence
+## Résultats
 
-- **`tokenizer.padding_side = "left"`** est obligatoire pour la génération
-  batchée avec un modèle décodeur — sans ce fix, les sorties dégénèrent en
-  tokens incohérents.
-- **Ne jamais inclure `"Answer ONLY in {language}."` dans le prompt
-  d'entraînement** — cette instruction n'était pas présente lors du SFT de
-  base, et l'ajouter plus tard a fait chuter le score LLM-Judge à 0, même si
-  le ROUGE restait correct. Le format du prompt doit être identique entre
-  entraînement et inférence.
-- **Sélection de l'epoch sur le score du leaderboard, pas sur la val_loss.**
-  La val_loss continuait de baisser jusqu'à l'epoch 10, mais le score
-  leaderboard culminait à l'epoch 7 puis se dégradait — un cas classique de
-  surapprentissage sur le petit échantillon de validation (320 exemples) que
-  l'early-stopping basé uniquement sur la val_loss n'aurait pas détecté.
-- **Le décodage par échantillonnage n'est pas uniformément bénéfique.** La
-  génération multiple + reranking CrossEncoder a amélioré le score sur 7 des
-  8 langues, mais a dégradé la génération amharique (~80% de sorties
-  corrompues) à cause d'une mauvaise tokenisation du script ge'ez par
-  Llama-3.1. Le pipeline final route l'amharique vers un décodage greedy
-  déterministe tout en gardant l'échantillonnage pour le reste.
+Progression du score au fil des itérations (détails complets dans
+[`results/journal_soumissions.md`](results/journal_soumissions.md)) :
 
-## Historique des résultats
-
-| Modèle | Score LB |
+| Étape | Score LB |
 |---|---|
-| mT0-XXL + reranking TF-IDF | 0.497 |
-| Qwen2.5-7B + reranking FAISS | 0.559 |
-| Llama-3.1-8B + reranking FAISS (epoch 5) | 0.596 |
-| Llama-3.1-8B + reranking FAISS (epoch 8) | 0.606 |
-| + retriever BGE-M3, top-3 contextes (epoch 7) | 0.612 |
-| + BGE-M3 top-5 contextes | 0.613 |
-| + génération multiple + sélection CrossEncoder | 0.616 |
-| **+ décodage déterministe pour l'amharique (final)** | **0.620** |
+| Premier modèle (mT0-XXL + reranking TF-IDF) | 0.497 |
+| Llama-3.1-8B + LoRA + reranking FAISS | 0.606 |
+| + retriever BGE-M3, contextes enrichis | 0.613 |
+| + décodage adaptatif par langue (version finale) | **0.620** |
 
-Voir [`results/leaderboard_history.md`](results/leaderboard_history.md) pour
-le journal complet des soumissions, y compris les pistes abandonnées.
+Documentation technique complète (corrections critiques, pistes
+abandonnées, choix d'architecture) : [`docs/RAPPORT_TECHNIQUE.md`](docs/RAPPORT_TECHNIQUE.md)
 
-## Ce qui n'a pas fonctionné
+## Démo en ligne
 
-- **Ensemble de Qwen2.5-7B et Llama-3.1-8B** (par longueur, ou par langue) —
-  toujours moins bon que Llama seul.
-- **Récupération directe naïve** (retourner la réponse Train/Val la plus
-  proche au-dessus d'un seuil de similarité) — score de 0.513, bien en
-  dessous de la génération pure. Une récupération utile nécessite de
-  conditionner le générateur sur le contexte, pas de se substituer à la
-  génération.
-- **Llama-3.3-70B en 4-bit (QLoRA)** — abandonné ; ~0.03 it/s en
-  entraînement rendait même 5 epochs impraticables (~57h projetées).
-- **Pousser l'entraînement au-delà de l'epoch optimale en val_loss** — les
-  epochs 9-10 ont systématiquement dégradé le score leaderboard sur chaque
-  variante testée, malgré une val_loss qui continuait de s'améliorer.
+Une interface Gradio est déployée gratuitement sur HuggingFace Spaces,
+affichant la réponse générée ainsi que les contextes récupérés par le
+système RAG : **[huggingface.co/spaces/kgueye001/african-health-qa](https://huggingface.co/spaces/kgueye001/african-health-qa)**
 
 ## Structure du dépôt
 
 ```
 .
-├── notebooks/              scripts d'entraînement et d'inférence
+├── notebooks/          scripts d'entraînement et d'inférence
 ├── scripts/
-│   ├── merge_lora_model.py     fusionne l'adaptateur LoRA dans le modèle de base
-│   ├── convert_to_gguf.py      quantise le modèle fusionné en GGUF Q4_K_M
-│   └── deploy/
-│       └── app.py              application Gradio (HuggingFace Space, CPU)
+│   ├── merge_lora_model.py     fusion de l'adaptateur LoRA dans le modèle de base
+│   ├── convert_to_gguf.py      quantification GGUF Q4_K_M
+│   └── deploy/app.py           application Gradio (HuggingFace Space)
 ├── results/
-│   └── leaderboard_history.md  journal complet des soumissions
-├── requirements.txt
-└── README.md
+│   └── journal_soumissions.md  historique complet des 18 soumissions
+├── docs/
+│   └── RAPPORT_TECHNIQUE.md    rapport technique détaillé
+└── requirements.txt
 ```
 
-## Modèles et données sur HuggingFace Hub
+## Modèles et données
 
 - Adaptateur LoRA : [kgueye001/llama31-african-health-qa-lora](https://huggingface.co/kgueye001/llama31-african-health-qa-lora)
 - Modèle quantisé GGUF : [kgueye001/llama31-african-health-qa-gguf](https://huggingface.co/kgueye001/llama31-african-health-qa-gguf)
@@ -112,5 +126,5 @@ le journal complet des soumissions, y compris les pistes abandonnées.
 
 ## Compétition
 
-[Multilingual Health Question Answering in Low-Resource African Languages](https://zindi.africa/) (ITU/HASH, hébergé sur Zindi).
-Langues couvertes : akan (Ghana), amharique (Éthiopie), anglais (Éthiopie/Ghana/Kenya/Ouganda), luganda (Ouganda), swahili (Kenya).
+[Multilingual Health Question Answering in Low-Resource African Languages](https://zindi.africa/) — challenge organisé par l'**ITU** (International Telecommunication Union) sur la plateforme Zindi, doté de 5 000 $.
+Langues couvertes : akan (Ghana), amharique (Éthiopie), anglais (Éthiopie, Ghana, Kenya, Ouganda), luganda (Ouganda), swahili (Kenya).

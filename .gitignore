@@ -1,8 +1,8 @@
-# Competition data (not redistributable per Zindi terms)
+# Données de la compétition (non redistribuables selon les conditions Zindi)
 data/
 *.csv
 
-# Model checkpoints and large artifacts
+# Checkpoints et artefacts volumineux
 *.safetensors
 *.gguf
 checkpoints/
