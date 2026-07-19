@@ -1,6 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
+--prefer-binary
 torch==2.9.1+cpu
-llama-cpp-python>=0.3.0
+llama-cpp-python==0.2.90
 sentence-transformers>=3.0.0
 FlagEmbedding>=1.2.0
 faiss-cpu>=1.8.0

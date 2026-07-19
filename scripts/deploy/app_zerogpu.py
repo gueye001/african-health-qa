@@ -1,21 +1,45 @@
 """
-African Health QA - Llama-3.1-8B (GGUF Q4_K_M) + BGE-M3 RAG
-Multilingual medical Q&A across 8 African languages, running on CPU.
+African Health QA - Llama-3.1-8B + LoRA (bf16, ZeroGPU) + BGE-M3 RAG
+Multilingual medical Q&A across 8 African languages.
+
+Genere sur GPU (ZeroGPU, A10G) au lieu du GGUF Q4_K_M quantifie CPU -> plus fidele
+au modele fine-tune (pas de perte de precision liee a la quantization 4-bit).
 """
 
-import os
+import contextlib
+
 import numpy as np
 import pandas as pd
 import gradio as gr
 import faiss
+import spaces
+import torch
 
-from llama_cpp import Llama
 from sentence_transformers import CrossEncoder
 from FlagEmbedding import BGEM3FlagModel
 from huggingface_hub import hf_hub_download
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
 
-GGUF_REPO    = "kgueye001/llama31-african-health-qa-gguf"
-GGUF_FILE    = "model-Q4_K_M.gguf"
+
+@contextlib.contextmanager
+def _force_cpu_only():
+    """FlagEmbedding/sentence-transformers re-detectent torch.cuda.is_available()
+    a chaque encode() (au lieu de respecter device='cpu' fixe au constructeur).
+    Sous ZeroGPU, is_available() renvoie True meme hors contexte @spaces.GPU,
+    ce qui les pousse a faire model.to('cuda') et declenche un crash bas-niveau
+    ("Low-level CUDA init"). On masque temporairement la disponibilite CUDA
+    pendant les appels d'embedding CPU pour forcer un vrai fallback CPU.
+    """
+    original = torch.cuda.is_available
+    torch.cuda.is_available = lambda: False
+    try:
+        yield
+    finally:
+        torch.cuda.is_available = original
+
+BASE_MODEL   = "meta-llama/Llama-3.1-8B-Instruct"
+LORA_REPO    = "kgueye001/llama31-african-health-qa-lora"
 DATASET_REPO = "kgueye001/african-health-qa-data"
 
 LANGUAGES = [
@@ -46,6 +70,8 @@ SYSTEM_PROMPT = (
     "Use the provided contexts if relevant to improve your answer."
 )
 
+# --- Retrieval (CPU) : embeddings precalcules + FAISS + CrossEncoder -------
+
 print("Loading RAG data...")
 train_df = pd.read_csv(
     f"hf://datasets/{DATASET_REPO}/Train.csv"
@@ -57,31 +83,39 @@ full_df = pd.concat([train_df, val_df], ignore_index=True)
 print(f"Loaded {len(full_df)} examples")
 
 print("Loading BGE-M3 (CPU) - only needed for encoding new queries at inference time...")
-embedder = BGEM3FlagModel('BAAI/bge-m3', use_fp16=False, device='cpu')
+# Le device cible de BGEM3FlagModel est fixe UNE FOIS a la construction (pas
+# recalcule a chaque encode()). Sous ZeroGPU, torch.cuda.is_available() renvoie
+# True meme hors contexte @spaces.GPU, donc le kwarg device='cpu' seul ne
+# suffit pas a empecher un fallback interne vers 'cuda' -- on masque aussi
+# is_available() pendant la construction pour forcer le choix CPU.
+with _force_cpu_only():
+    embedder = BGEM3FlagModel('BAAI/bge-m3', use_fp16=False, device='cpu')
 print("BGE-M3 ready")
 
 print("Loading CrossEncoder (CPU)...")
-reranker = CrossEncoder(
-    'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
-    max_length=256,
-    device='cpu'
-)
+with _force_cpu_only():
+    reranker = CrossEncoder(
+        'cross-encoder/mmarco-mMiniLMv2-L12-H384-v1',
+        max_length=256,
+        device='cpu'
+    )
 print("CrossEncoder ready")
 
 
 def encode_query(texts, batch_size=8):
     """Encode a small number of query texts at inference time (fast)."""
     all_vecs = []
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i + batch_size]
-        output = embedder.encode(
-            batch, batch_size=batch_size, max_length=512,
-            return_dense=True, return_sparse=False, return_colbert_vecs=False
-        )
-        vecs = np.array(output['dense_vecs'], dtype=np.float32)
-        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
-        vecs = vecs / (norms + 1e-8)
-        all_vecs.append(vecs)
+    with _force_cpu_only():
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            output = embedder.encode(
+                batch, batch_size=batch_size, max_length=512,
+                return_dense=True, return_sparse=False, return_colbert_vecs=False
+            )
+            vecs = np.array(output['dense_vecs'], dtype=np.float32)
+            norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+            vecs = vecs / (norms + 1e-8)
+            all_vecs.append(vecs)
     return np.vstack(all_vecs)
 
 
@@ -125,23 +159,35 @@ def retrieve_top3(question, langue, max_sim=0.999):
             break
     if not candidats:
         return []
-    scores = reranker.predict([[question, c[0]] for c in candidats], batch_size=8)
+    with _force_cpu_only():
+        scores = reranker.predict([[question, c[0]] for c in candidats], batch_size=8)
     ranked = sorted(zip(scores, candidats), reverse=True, key=lambda x: x[0])
     return [(str(c[1])[:200], float(s)) for s, c in ranked[:3]]
 
 
-print("Downloading GGUF model...")
-gguf_path = hf_hub_download(repo_id=GGUF_REPO, filename=GGUF_FILE)
-print(f"GGUF downloaded: {gguf_path}")
+# --- Generation (GPU, ZeroGPU) : Llama-3.1-8B-Instruct + LoRA (bf16) -------
 
-print("Loading llama.cpp model...")
-llm = Llama(
-    model_path=gguf_path,
-    n_ctx=2048,
-    n_threads=os.cpu_count() or 4,
-    verbose=False,
-)
-print("llama.cpp model ready")
+print("Loading tokenizer (does not need a GPU)...")
+tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+
+# Le chargement du modele de base + application du LoRA est reporte a
+# l'interieur de generate() (premiere requete, mis en cache ensuite). Sous
+# ZeroGPU, aucun GPU reel n'est attache hors d'une fonction decoree
+# @spaces.GPU -- meme construire le PeftModel (chargement des poids LoRA via
+# safetensors) echoue en dehors de ce contexte ("No CUDA GPUs are available").
+_model_cache: dict = {}
+
+
+def _get_model():
+    if "model" not in _model_cache:
+        print("Loading base model (bf16) + LoRA adapter on GPU (first call)...")
+        base_model = AutoModelForCausalLM.from_pretrained(BASE_MODEL, dtype=torch.bfloat16)
+        model = PeftModel.from_pretrained(base_model, LORA_REPO)
+        model.eval()
+        model.to("cuda")
+        _model_cache["model"] = model
+        print("Model ready")
+    return _model_cache["model"]
 
 
 def make_messages(question, language, ctx1, ctx2, ctx3):
@@ -157,6 +203,25 @@ def make_messages(question, language, ctx1, ctx2, ctx3):
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_content},
     ]
+
+
+@spaces.GPU(duration=120)
+def generate(messages):
+    model = _get_model()
+    input_ids = tokenizer.apply_chat_template(
+        messages, return_tensors="pt", add_generation_prompt=True
+    ).to("cuda")
+    with torch.no_grad():
+        output = model.generate(
+            input_ids,
+            max_new_tokens=256,
+            do_sample=False,
+            temperature=None,
+            top_p=None,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+    text = tokenizer.decode(output[0][input_ids.shape[-1]:], skip_special_tokens=True)
+    return text.strip()
 
 
 def answer_question(question, language):
@@ -175,12 +240,7 @@ def answer_question(question, language):
         contexts_display = "_No relevant context found in the knowledge base._"
 
     messages = make_messages(question, language, ctx1, ctx2, ctx3)
-    result = llm.create_chat_completion(
-        messages=messages,
-        max_tokens=256,
-        temperature=0.0,
-    )
-    answer = result["choices"][0]["message"]["content"].strip()
+    answer = generate(messages)
 
     return answer, contexts_display
 
@@ -196,15 +256,13 @@ with gr.Blocks(title="African Health QA - Multilingual Medical Assistant") as de
     gr.Markdown(
         """
         # African Health QA Assistant
-        **Llama-3.1-8B fine-tuned with LoRA + BGE-M3 RAG retrieval (CPU, GGUF Q4_K_M)**
+        **Llama-3.1-8B fine-tuned with LoRA (bf16, GPU) + BGE-M3 RAG retrieval**
 
         Multilingual health Q&A across 8 African languages: Akan, Amharic, English (Ethiopia/Ghana/Kenya/Uganda), Luganda, Swahili.
 
         Built for the Zindi/ITU Multilingual Health QA Challenge - Final score: **0.620** (LLM Judge: 0.756).
 
-        Pipeline: **BGE-M3 embeddings** -> **CrossEncoder reranking** -> **Llama-3.1-8B + LoRA generation (4-bit quantized)**
-
-        _Running on free CPU hardware - responses may take 30-90 seconds._
+        Pipeline: **BGE-M3 embeddings** -> **CrossEncoder reranking** -> **Llama-3.1-8B + LoRA generation (bf16, ZeroGPU)**
         """
     )
 
@@ -239,10 +297,10 @@ with gr.Blocks(title="African Health QA - Multilingual Medical Assistant") as de
     gr.Markdown(
         """
         ---
-        **GGUF model:** [kgueye001/llama31-african-health-qa-gguf](https://huggingface.co/kgueye001/llama31-african-health-qa-gguf)
+        **Base model:** [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
         **LoRA adapter:** [kgueye001/llama31-african-health-qa-lora](https://huggingface.co/kgueye001/llama31-african-health-qa-lora)
         **Data:** [kgueye001/african-health-qa-data](https://huggingface.co/datasets/kgueye001/african-health-qa-data)
         """
     )
 
-demo.queue(max_size=10).launch()
+demo.queue(max_size=10).launch(show_error=True)
