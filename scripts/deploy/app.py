@@ -199,59 +199,63 @@ CUSTOM_CSS = """
     background: radial-gradient(circle at 15% 0%, #e3fbf0 0%, #eaf5ff 45%, #fff6ea 100%) !important;
 }
 #hero {
-    background: linear-gradient(120deg, #0f9b6c 0%, #14b8a6 55%, #0ea5b7 100%);
-    padding: 34px 36px 30px;
-    border-radius: 22px;
-    margin-bottom: 22px;
-    box-shadow: 0 10px 28px rgba(15, 155, 108, 0.28);
+    background: #0f766e;
+    padding: 28px 32px;
+    border-radius: 18px;
+    margin-bottom: 18px;
 }
 #hero * { color: #ffffff !important; }
-#hero h1 { font-size: 2.1em !important; margin: 0 0 8px !important; }
-#hero p { font-size: 1.05em !important; opacity: 0.96; margin: 4px 0 !important; }
+#hero h1 { font-size: 1.9em !important; margin: 0 0 8px !important; }
+#hero p { font-size: 1em !important; opacity: 0.92; margin: 4px 0 !important; }
 #steps {
-    background: #ffffff;
-    border: 1px solid #d9f0e8;
-    border-radius: 16px;
-    padding: 14px 20px;
+    background: #f0fdfa;
+    border-radius: 12px;
+    padding: 12px 18px;
     margin-bottom: 18px;
-    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
 }
-#steps * { color: #0f766e !important; }
+#steps * { color: #115e59 !important; }
 #ask-panel, #answer-panel {
     background: #ffffff;
-    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
     padding: 20px 22px;
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
 }
-#ask-panel { border-left: 6px solid #14b8a6; }
-#answer-panel { border-left: 6px solid #f59e0b; }
+.panel-title { margin-bottom: 4px !important; }
+.panel-title * { color: #0f172a !important; font-weight: 700 !important; }
+#ask-panel label, #ask-panel .label-wrap span { color: #334155 !important; }
+#ask-panel input, #ask-panel textarea, #ask-panel select {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
 #ask-btn {
-    font-size: 1.12em !important;
+    font-size: 1.05em !important;
     font-weight: 700 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35);
+    border-radius: 10px !important;
+    background: #0f766e !important;
+    color: #ffffff !important;
 }
 #wait-note * { color: #92400e !important; text-align: center; }
 #answer-box textarea {
-    font-size: 1.15em !important;
-    border: 2px solid #f59e0b !important;
-    border-radius: 12px !important;
-    background: #fffdf7 !important;
-    color: #1f2937 !important;
+    font-size: 1.1em !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
 }
 #similar-cases { color: #374151 !important; }
 #footer {
     text-align: center;
-    margin-top: 22px;
-    padding: 14px;
-    border-top: 1px dashed #cbd5e1;
+    margin-top: 20px;
+    padding: 12px;
+    border-top: 1px solid #e2e8f0;
 }
-#footer * { color: #64748b !important; font-size: 0.92em; }
+#footer * { color: #64748b !important; font-size: 0.9em; }
 """
 
 with gr.Blocks(
     title="Assistant Santé Africain",
-    theme=gr.themes.Soft(primary_hue="teal", secondary_hue="orange"),
+    theme=gr.themes.Soft(primary_hue="teal", secondary_hue="slate"),
     css=CUSTOM_CSS,
 ) as demo:
     gr.Markdown(
@@ -272,7 +276,7 @@ with gr.Blocks(
 
     with gr.Row():
         with gr.Column(scale=2, elem_id="ask-panel"):
-            gr.Markdown("### ✏️ Votre question")
+            gr.Markdown("### ✏️ Votre question", elem_classes=["panel-title"])
             language_input = gr.Dropdown(
                 choices=[(LANGUAGE_FLAGS[lg], lg) for lg in LANGUAGES],
                 value="Eng_Ken",
@@ -292,7 +296,7 @@ with gr.Blocks(
             )
 
         with gr.Column(scale=2, elem_id="answer-panel"):
-            gr.Markdown("### ✅ Votre réponse")
+            gr.Markdown("### ✅ Votre réponse", elem_classes=["panel-title"])
             answer_output = gr.Textbox(label="", lines=6, elem_id="answer-box", show_label=False)
             with gr.Accordion("📚 Voir des cas similaires déjà répondus", open=False):
                 contexts_output = gr.Markdown(value="", visible=False, elem_id="similar-cases")
