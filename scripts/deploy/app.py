@@ -161,18 +161,16 @@ def make_messages(question, language, ctx1, ctx2, ctx3):
 
 def answer_question(question, language):
     if not question or not question.strip():
-        return "Please enter a question.", ""
+        return "Please write a question first.", gr.update(value="", visible=False)
 
     top3 = retrieve_top3(question, language)
     ctx1 = top3[0][0] if len(top3) > 0 else ""
     ctx2 = top3[1][0] if len(top3) > 1 else ""
     ctx3 = top3[2][0] if len(top3) > 2 else ""
 
-    contexts_display = ""
-    for i, (ctx, score) in enumerate(top3, 1):
-        contexts_display += f"**Context {i}** (similarity score: {score:.3f})\n{ctx}\n\n"
-    if not contexts_display:
-        contexts_display = "_No relevant context found in the knowledge base._"
+    similar_cases = ""
+    for i, (ctx, _score) in enumerate(top3, 1):
+        similar_cases += f"**{i}.** {ctx}\n\n"
 
     messages = make_messages(question, language, ctx1, ctx2, ctx3)
     result = llm.create_chat_completion(
@@ -182,7 +180,7 @@ def answer_question(question, language):
     )
     answer = result["choices"][0]["message"]["content"].strip()
 
-    return answer, contexts_display
+    return answer, gr.update(value=similar_cases, visible=bool(similar_cases))
 
 
 EXAMPLES = [
@@ -192,43 +190,68 @@ EXAMPLES = [
     ["Wo sukuu oyarehwefo anaa akwahosan ho dwumayeni ne wo beb nna ho nsem?", "Aka_Gha"],
 ]
 
-with gr.Blocks(title="African Health QA - Multilingual Medical Assistant") as demo:
+CUSTOM_CSS = """
+.gradio-container {
+    background: linear-gradient(135deg, #eafaf1 0%, #eef6fb 100%) !important;
+}
+#header-card {
+    background: linear-gradient(120deg, #0f9b6c 0%, #14b8a6 100%);
+    padding: 28px 32px;
+    border-radius: 18px;
+    color: white !important;
+    margin-bottom: 18px;
+    box-shadow: 0 6px 18px rgba(15, 155, 108, 0.25);
+}
+#header-card h1 { color: white !important; margin-bottom: 6px; }
+#header-card p { color: #eafff6 !important; font-size: 1.05em; }
+#ask-btn { font-size: 1.1em; font-weight: 600; }
+#answer-box textarea {
+    font-size: 1.15em !important;
+    border: 2px solid #14b8a6 !important;
+    border-radius: 12px !important;
+}
+#footer-note { text-align: center; color: #4b5563; margin-top: 10px; font-size: 0.9em; }
+"""
+
+with gr.Blocks(
+    title="Assistant Santé Africain",
+    theme=gr.themes.Soft(primary_hue="teal", secondary_hue="orange"),
+    css=CUSTOM_CSS,
+) as demo:
     gr.Markdown(
         """
-        # African Health QA Assistant
-        **Llama-3.1-8B fine-tuned with LoRA + BGE-M3 RAG retrieval (CPU, GGUF Q4_K_M)**
-
-        Multilingual health Q&A across 8 African languages: Akan, Amharic, English (Ethiopia/Ghana/Kenya/Uganda), Luganda, Swahili.
-
-        Built for the Zindi/ITU Multilingual Health QA Challenge - Final score: **0.620** (LLM Judge: 0.756).
-
-        Pipeline: **BGE-M3 embeddings** -> **CrossEncoder reranking** -> **Llama-3.1-8B + LoRA generation (4-bit quantized)**
-
-        _Running on free CPU hardware - responses may take 30-90 seconds._
+        <div id="header-card">
+        <h1>🌍 Assistant Santé Africain</h1>
+        <p>Posez une question de santé dans votre langue et recevez une réponse claire.
+        Disponible en 8 langues d'Afrique : Akan, Amharique, Anglais (Éthiopie, Ghana, Kenya, Ouganda), Luganda, Swahili.</p>
+        </div>
         """
     )
 
     with gr.Row():
         with gr.Column(scale=2):
             question_input = gr.Textbox(
-                label="Your health question",
-                placeholder="e.g. How can I prevent HIV transmission?",
+                label="✏️ Votre question de santé",
+                placeholder="Exemple : Comment puis-je me protéger du paludisme ?",
                 lines=3
             )
             language_input = gr.Dropdown(
                 choices=[(LANGUAGE_NAMES[lg], lg) for lg in LANGUAGES],
                 value="Eng_Ken",
-                label="Language"
+                label="🌐 Langue"
             )
-            submit_btn = gr.Button("Ask", variant="primary")
+            submit_btn = gr.Button("💬 Poser la question", variant="primary", elem_id="ask-btn")
+            gr.Markdown("⏳ *La réponse peut prendre 30 à 90 secondes, merci de patienter.*")
             gr.Examples(
                 examples=EXAMPLES,
                 inputs=[question_input, language_input],
+                label="Exemples de questions",
             )
 
         with gr.Column(scale=2):
-            answer_output = gr.Textbox(label="Answer", lines=6)
-            contexts_output = gr.Markdown(label="Retrieved contexts (RAG)")
+            answer_output = gr.Textbox(label="✅ Réponse", lines=6, elem_id="answer-box")
+            with gr.Accordion("📚 Voir des cas similaires déjà répondus", open=False):
+                contexts_output = gr.Markdown(value="", visible=False)
 
     submit_btn.click(
         fn=answer_question,
@@ -238,10 +261,7 @@ with gr.Blocks(title="African Health QA - Multilingual Medical Assistant") as de
 
     gr.Markdown(
         """
-        ---
-        **GGUF model:** [kgueye001/llama31-african-health-qa-gguf](https://huggingface.co/kgueye001/llama31-african-health-qa-gguf)
-        **LoRA adapter:** [kgueye001/llama31-african-health-qa-lora](https://huggingface.co/kgueye001/llama31-african-health-qa-lora)
-        **Data:** [kgueye001/african-health-qa-data](https://huggingface.co/datasets/kgueye001/african-health-qa-data)
+        <p id="footer-note">🧑‍💻 Projet réalisé par Khadim Gueye · Assistant gratuit, à titre informatif uniquement — ne remplace pas l'avis d'un professionnel de santé.</p>
         """
     )
 
