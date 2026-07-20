@@ -220,7 +220,19 @@ CUSTOM_CSS = """
     margin-bottom: 16px;
 }
 #steps * { color: #315e54 !important; font-size: 0.93em; }
+/* Gradio's own component internals (Accordion, empty states, icons)
+   read these CSS custom properties, which flip to dark values under
+   the browser's OS dark-mode `body.dark` class regardless of our
+   theme choice. Scoping light values on the two panels fixes every
+   nested component at once instead of chasing individual classes. */
 #ask-panel, #answer-panel {
+    --block-background-fill: #ffffff;
+    --block-label-text-color: #57534e;
+    --block-border-color: #e5e3dd;
+    --border-color-primary: #e5e3dd;
+    --body-text-color: #292524;
+    --body-text-color-subdued: #78716c;
+    --input-background-fill: #ffffff;
     background: #fdfdfc;
     border: 1px solid #e5e3dd;
     border-radius: 12px;
