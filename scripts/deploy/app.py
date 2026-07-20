@@ -202,9 +202,13 @@ LANGUAGE_FLAGS = {
 CUSTOM_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Lora:wght@600&display=swap');
 :root { color-scheme: light; }
+html, body {
+    background: #fbf6ee !important;
+}
 .gradio-container {
     background: #fbf6ee !important;
     max-width: 720px !important;
+    margin: 0 auto !important;
 }
 #hero { text-align: center; padding: 10px 8px 0; }
 #hero h1 {
