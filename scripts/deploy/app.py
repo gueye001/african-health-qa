@@ -193,108 +193,102 @@ LANGUAGE_FLAGS = {
 # Note: elem_id targets the wrapper <div> Gradio itself generates for a
 # component, unlike an id typed inside raw Markdown/HTML which the
 # sanitizer strips — hence styling goes through elem_id everywhere below.
-# Design system, shared across all Space demos: a warm neutral "paper"
-# background (not stark white) instead of a bright gradient, one muted
-# desaturated accent for actions, and the hero is a soft tinted card
-# rather than a solid saturated fill — easier on the eyes to sit and read.
+#
+# Design direction for this one: a warm editorial/humanitarian feel,
+# closer to an NGO field-guide than a dashboard — a serif headline, a
+# cream "paper" canvas, a hand-woven-inspired stripe accent, and the
+# Q&A laid out as a single vertical conversation (question bubble then
+# answer bubble) instead of side-by-side panels.
 CUSTOM_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@600&display=swap');
 :root { color-scheme: light; }
 .gradio-container {
-    background: #f3f2ee !important;
+    background: #fbf6ee !important;
+    max-width: 720px !important;
 }
-#hero {
-    background: #e8efec;
-    border: 1px solid #dbe6e1;
-    padding: 24px 28px;
-    border-radius: 14px;
-    margin-bottom: 16px;
+#hero { text-align: center; padding: 10px 8px 0; }
+#hero h1 {
+    font-family: 'Lora', serif !important;
+    font-size: 2em !important;
+    font-weight: 600 !important;
+    color: #3a2a1c !important;
+    margin: 0 0 8px !important;
 }
-#hero * { color: #1f3b34 !important; }
-#hero h1 { font-size: 1.6em !important; margin: 0 0 6px !important; font-weight: 700 !important; }
-#hero p { font-size: 0.96em !important; opacity: 0.85; margin: 4px 0 !important; line-height: 1.5; }
-#steps {
-    background: #f3f2ee;
-    border: 1px solid #e5e3dd;
-    border-radius: 10px;
-    padding: 10px 16px;
-    margin-bottom: 16px;
+#hero p { color: #7a6a56 !important; font-size: 1em !important; line-height: 1.55; margin: 0 auto 14px !important; max-width: 480px; }
+#stripe {
+    height: 5px; max-width: 220px; margin: 0 auto 20px; border-radius: 3px;
+    background: linear-gradient(90deg, #c2703d 0 25%, #b8862f 25% 50%, #3d6a52 50% 75%, #8a3b32 75% 100%);
 }
-#steps * { color: #315e54 !important; font-size: 0.93em; }
 /* Gradio's own component internals (Accordion, empty states, icons)
    read these CSS custom properties, which flip to dark values under
    the browser's OS dark-mode `body.dark` class regardless of our
-   theme choice. Scoping light values on the two panels fixes every
-   nested component at once instead of chasing individual classes. */
-#ask-panel, #answer-panel {
+   theme choice. Scoping light values on the conversation stage fixes
+   every nested component at once instead of chasing individual classes. */
+#conversation {
     --block-background-fill: #ffffff;
-    --block-label-text-color: #57534e;
-    --block-border-color: #e5e3dd;
-    --border-color-primary: #e5e3dd;
-    --body-text-color: #292524;
-    --body-text-color-subdued: #78716c;
+    --block-label-text-color: #7a6a56;
+    --block-border-color: #ecd9c4;
+    --border-color-primary: #ecd9c4;
+    --body-text-color: #3a2a1c;
+    --body-text-color-subdued: #8a7c6a;
     --input-background-fill: #ffffff;
-    background: #fdfdfc;
-    border: 1px solid #e5e3dd;
-    border-radius: 12px;
-    padding: 18px 20px;
 }
-.panel-title { margin-bottom: 4px !important; }
-.panel-title * { color: #292524 !important; font-weight: 600 !important; }
-#ask-panel label, #ask-panel .label-wrap span { color: #57534e !important; }
-#ask-panel input, #ask-panel textarea, #ask-panel select {
+.bubble {
+    border-radius: 18px;
+    padding: 16px 20px;
+    margin-bottom: 6px;
+    border: 1px solid #ecd9c4;
+}
+.bubble-q { background: #ffffff; border-bottom-left-radius: 4px; }
+.bubble-a { background: #f7ede0; border-bottom-left-radius: 4px; }
+.bubble-label { font-size: 0.85em !important; font-weight: 600 !important; color: #a5601f !important; margin-bottom: 6px !important; }
+#conversation label, #conversation .label-wrap span { color: #7a6a56 !important; }
+#conversation input, #conversation textarea, #conversation select {
     background: #ffffff !important;
-    color: #292524 !important;
-    border: 1px solid #d6d3ce !important;
+    color: #3a2a1c !important;
+    border: 1px solid #ecd9c4 !important;
 }
 #ask-btn {
     font-size: 1.02em !important;
-    font-weight: 600 !important;
-    border-radius: 9px !important;
-    background: #3d6a5f !important;
+    font-weight: 700 !important;
+    border-radius: 999px !important;
+    padding: 10px 26px !important;
+    background: #c2703d !important;
     color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(194, 112, 61, 0.28);
+    display: block !important;
+    margin: 4px auto 0 !important;
 }
-#wait-note * { color: #8a6a3a !important; text-align: center; }
-#answer-box textarea {
-    font-size: 1.05em !important;
-    border: 1px solid #d6d3ce !important;
-    border-radius: 9px !important;
-    background: #ffffff !important;
-    color: #292524 !important;
-}
-#similar-cases { color: #44403c !important; }
+#ask-btn:hover { background: #a85c2f !important; }
+#wait-note * { color: #a5601f !important; text-align: center; font-size: 0.88em; }
+#similar-cases { color: #5c4f3f !important; }
 #footer {
     text-align: center;
-    margin-top: 20px;
-    padding: 12px;
-    border-top: 1px solid #e5e3dd;
+    margin-top: 22px;
+    padding: 14px;
+    border-top: 1px solid #ecd9c4;
 }
-#footer * { color: #78716c !important; font-size: 0.9em; }
+#footer * { color: #a39784 !important; font-size: 0.88em; }
 """
 
 with gr.Blocks(
     title="Assistant Santé Africain",
-    theme=gr.themes.Soft(primary_hue="teal", secondary_hue="slate"),
+    theme=gr.themes.Soft(primary_hue="orange", secondary_hue="stone"),
     css=CUSTOM_CSS,
 ) as demo:
     gr.Markdown(
         """
 # 🌍 Assistant Santé Africain
 
-**Posez une question de santé, recevez une réponse claire — dans votre langue.**
-
-🇬🇭 Akan · 🇪🇹 Amharique · 🇪🇹🇬🇭🇰🇪🇺🇬 Anglais · 🇺🇬 Luganda · 🇰🇪 Swahili
+Posez une question de santé, recevez une réponse claire — dans votre langue.
         """,
         elem_id="hero",
     )
+    gr.HTML('<div id="stripe"></div>')
 
-    gr.Markdown(
-        "**① Choisissez votre langue** &nbsp;→&nbsp; **② Écrivez votre question** &nbsp;→&nbsp; **③ Recevez votre réponse**",
-        elem_id="steps",
-    )
-
-    with gr.Row():
-        with gr.Column(scale=2, elem_id="ask-panel"):
-            gr.Markdown("### ✏️ Votre question", elem_classes=["panel-title"])
+    with gr.Column(elem_id="conversation"):
+        with gr.Column(elem_classes=["bubble", "bubble-q"]):
+            gr.Markdown("🧑 VOUS", elem_classes=["bubble-label"])
             language_input = gr.Dropdown(
                 choices=[(LANGUAGE_FLAGS[lg], lg) for lg in LANGUAGES],
                 value="Eng_Ken",
@@ -305,16 +299,17 @@ with gr.Blocks(
                 placeholder="Exemple : Comment puis-je me protéger du paludisme ?",
                 lines=3
             )
-            submit_btn = gr.Button("💬 Poser la question", variant="primary", elem_id="ask-btn")
-            gr.Markdown("⏳ *La réponse peut prendre 30 à 90 secondes, merci de patienter.*", elem_id="wait-note")
             gr.Examples(
                 examples=EXAMPLES,
                 inputs=[question_input, language_input],
                 label="💡 Exemples de questions",
             )
 
-        with gr.Column(scale=2, elem_id="answer-panel"):
-            gr.Markdown("### ✅ Votre réponse", elem_classes=["panel-title"])
+        submit_btn = gr.Button("💬 Poser la question", variant="primary", elem_id="ask-btn")
+        gr.Markdown("⏳ *La réponse peut prendre 30 à 90 secondes, merci de patienter.*", elem_id="wait-note")
+
+        with gr.Column(elem_classes=["bubble", "bubble-a"]):
+            gr.Markdown("🌍 ASSISTANT", elem_classes=["bubble-label"])
             answer_output = gr.Textbox(label="", lines=6, elem_id="answer-box", show_label=False)
             with gr.Accordion("📚 Voir des cas similaires déjà répondus", open=False):
                 contexts_output = gr.Markdown(value="", visible=False, elem_id="similar-cases")
