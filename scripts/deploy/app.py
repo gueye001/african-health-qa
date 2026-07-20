@@ -193,64 +193,70 @@ LANGUAGE_FLAGS = {
 # Note: elem_id targets the wrapper <div> Gradio itself generates for a
 # component, unlike an id typed inside raw Markdown/HTML which the
 # sanitizer strips — hence styling goes through elem_id everywhere below.
+# Design system, shared across all Space demos: a warm neutral "paper"
+# background (not stark white) instead of a bright gradient, one muted
+# desaturated accent for actions, and the hero is a soft tinted card
+# rather than a solid saturated fill — easier on the eyes to sit and read.
 CUSTOM_CSS = """
 :root { color-scheme: light; }
 .gradio-container {
-    background: radial-gradient(circle at 15% 0%, #e3fbf0 0%, #eaf5ff 45%, #fff6ea 100%) !important;
+    background: #f3f2ee !important;
 }
 #hero {
-    background: #0f766e;
-    padding: 28px 32px;
-    border-radius: 18px;
-    margin-bottom: 18px;
-}
-#hero * { color: #ffffff !important; }
-#hero h1 { font-size: 1.9em !important; margin: 0 0 8px !important; }
-#hero p { font-size: 1em !important; opacity: 0.92; margin: 4px 0 !important; }
-#steps {
-    background: #f0fdfa;
-    border-radius: 12px;
-    padding: 12px 18px;
-    margin-bottom: 18px;
-}
-#steps * { color: #115e59 !important; }
-#ask-panel, #answer-panel {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
+    background: #e8efec;
+    border: 1px solid #dbe6e1;
+    padding: 24px 28px;
     border-radius: 14px;
-    padding: 20px 22px;
+    margin-bottom: 16px;
+}
+#hero * { color: #1f3b34 !important; }
+#hero h1 { font-size: 1.6em !important; margin: 0 0 6px !important; font-weight: 700 !important; }
+#hero p { font-size: 0.96em !important; opacity: 0.85; margin: 4px 0 !important; line-height: 1.5; }
+#steps {
+    background: #f3f2ee;
+    border: 1px solid #e5e3dd;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+}
+#steps * { color: #315e54 !important; font-size: 0.93em; }
+#ask-panel, #answer-panel {
+    background: #fdfdfc;
+    border: 1px solid #e5e3dd;
+    border-radius: 12px;
+    padding: 18px 20px;
 }
 .panel-title { margin-bottom: 4px !important; }
-.panel-title * { color: #0f172a !important; font-weight: 700 !important; }
-#ask-panel label, #ask-panel .label-wrap span { color: #334155 !important; }
+.panel-title * { color: #292524 !important; font-weight: 600 !important; }
+#ask-panel label, #ask-panel .label-wrap span { color: #57534e !important; }
 #ask-panel input, #ask-panel textarea, #ask-panel select {
     background: #ffffff !important;
-    color: #0f172a !important;
-    border: 1px solid #cbd5e1 !important;
+    color: #292524 !important;
+    border: 1px solid #d6d3ce !important;
 }
 #ask-btn {
-    font-size: 1.05em !important;
-    font-weight: 700 !important;
-    border-radius: 10px !important;
-    background: #0f766e !important;
+    font-size: 1.02em !important;
+    font-weight: 600 !important;
+    border-radius: 9px !important;
+    background: #3d6a5f !important;
     color: #ffffff !important;
 }
-#wait-note * { color: #92400e !important; text-align: center; }
+#wait-note * { color: #8a6a3a !important; text-align: center; }
 #answer-box textarea {
-    font-size: 1.1em !important;
-    border: 1px solid #cbd5e1 !important;
-    border-radius: 10px !important;
+    font-size: 1.05em !important;
+    border: 1px solid #d6d3ce !important;
+    border-radius: 9px !important;
     background: #ffffff !important;
-    color: #0f172a !important;
+    color: #292524 !important;
 }
-#similar-cases { color: #374151 !important; }
+#similar-cases { color: #44403c !important; }
 #footer {
     text-align: center;
     margin-top: 20px;
     padding: 12px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #e5e3dd;
 }
-#footer * { color: #64748b !important; font-size: 0.9em; }
+#footer * { color: #78716c !important; font-size: 0.9em; }
 """
 
 with gr.Blocks(
