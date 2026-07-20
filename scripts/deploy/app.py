@@ -237,6 +237,17 @@ html, body {
     --body-text-color-subdued: #8a7c6a;
     --input-background-fill: #ffffff;
 }
+/* The Dropdown options list renders in a portal attached directly to
+   <body>, outside #conversation, so the scoped var overrides above
+   never reach it — it was inheriting the dark-mode near-black
+   background while its own text stayed dark, i.e. dark-on-dark. */
+ul.options {
+    background: #ffffff !important;
+    border: 1px solid #ecd9c4 !important;
+}
+ul.options li.item:hover, ul.options li.item.selected {
+    background: #f7ede0 !important;
+}
 .bubble {
     border-radius: 18px;
     padding: 16px 20px;
