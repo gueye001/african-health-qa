@@ -23,17 +23,6 @@ LANGUAGES = [
     "Eng_Ken", "Eng_Uga", "Lug_Uga", "Swa_Ken",
 ]
 
-LANGUAGE_NAMES = {
-    "Aka_Gha": "Akan (Ghana)",
-    "Amh_Eth": "Amharic (Ethiopia)",
-    "Eng_Eth": "English (Ethiopia)",
-    "Eng_Gha": "English (Ghana)",
-    "Eng_Ken": "English (Kenya)",
-    "Eng_Uga": "English (Uganda)",
-    "Lug_Uga": "Luganda (Uganda)",
-    "Swa_Ken": "Swahili (Kenya)",
-}
-
 K_PAR_LANGUE = {
     'Eng_Uga':10, 'Eng_Gha':10, 'Aka_Gha':8,
     'Eng_Eth':8,  'Lug_Uga':5,  'Swa_Ken':5,
@@ -190,27 +179,74 @@ EXAMPLES = [
     ["Wo sukuu oyarehwefo anaa akwahosan ho dwumayeni ne wo beb nna ho nsem?", "Aka_Gha"],
 ]
 
+LANGUAGE_FLAGS = {
+    "Aka_Gha": "🇬🇭 Akan (Ghana)",
+    "Amh_Eth": "🇪🇹 Amharique (Éthiopie)",
+    "Eng_Eth": "🇪🇹 Anglais (Éthiopie)",
+    "Eng_Gha": "🇬🇭 Anglais (Ghana)",
+    "Eng_Ken": "🇰🇪 Anglais (Kenya)",
+    "Eng_Uga": "🇺🇬 Anglais (Ouganda)",
+    "Lug_Uga": "🇺🇬 Luganda (Ouganda)",
+    "Swa_Ken": "🇰🇪 Swahili (Kenya)",
+}
+
+# Note: elem_id targets the wrapper <div> Gradio itself generates for a
+# component, unlike an id typed inside raw Markdown/HTML which the
+# sanitizer strips — hence styling goes through elem_id everywhere below.
 CUSTOM_CSS = """
+:root { color-scheme: light; }
 .gradio-container {
-    background: linear-gradient(135deg, #eafaf1 0%, #eef6fb 100%) !important;
+    background: radial-gradient(circle at 15% 0%, #e3fbf0 0%, #eaf5ff 45%, #fff6ea 100%) !important;
 }
-#header-card {
-    background: linear-gradient(120deg, #0f9b6c 0%, #14b8a6 100%);
-    padding: 28px 32px;
-    border-radius: 18px;
-    color: white !important;
+#hero {
+    background: linear-gradient(120deg, #0f9b6c 0%, #14b8a6 55%, #0ea5b7 100%);
+    padding: 34px 36px 30px;
+    border-radius: 22px;
+    margin-bottom: 22px;
+    box-shadow: 0 10px 28px rgba(15, 155, 108, 0.28);
+}
+#hero * { color: #ffffff !important; }
+#hero h1 { font-size: 2.1em !important; margin: 0 0 8px !important; }
+#hero p { font-size: 1.05em !important; opacity: 0.96; margin: 4px 0 !important; }
+#steps {
+    background: #ffffff;
+    border: 1px solid #d9f0e8;
+    border-radius: 16px;
+    padding: 14px 20px;
     margin-bottom: 18px;
-    box-shadow: 0 6px 18px rgba(15, 155, 108, 0.25);
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
 }
-#header-card h1 { color: white !important; margin-bottom: 6px; }
-#header-card p { color: #eafff6 !important; font-size: 1.05em; }
-#ask-btn { font-size: 1.1em; font-weight: 600; }
+#steps * { color: #0f766e !important; }
+#ask-panel, #answer-panel {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px 22px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
+}
+#ask-panel { border-left: 6px solid #14b8a6; }
+#answer-panel { border-left: 6px solid #f59e0b; }
+#ask-btn {
+    font-size: 1.12em !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35);
+}
+#wait-note * { color: #92400e !important; text-align: center; }
 #answer-box textarea {
     font-size: 1.15em !important;
-    border: 2px solid #14b8a6 !important;
+    border: 2px solid #f59e0b !important;
     border-radius: 12px !important;
+    background: #fffdf7 !important;
+    color: #1f2937 !important;
 }
-#footer-note { text-align: center; color: #4b5563; margin-top: 10px; font-size: 0.9em; }
+#similar-cases { color: #374151 !important; }
+#footer {
+    text-align: center;
+    margin-top: 22px;
+    padding: 14px;
+    border-top: 1px dashed #cbd5e1;
+}
+#footer * { color: #64748b !important; font-size: 0.92em; }
 """
 
 with gr.Blocks(
@@ -220,38 +256,46 @@ with gr.Blocks(
 ) as demo:
     gr.Markdown(
         """
-        <div id="header-card">
-        <h1>🌍 Assistant Santé Africain</h1>
-        <p>Posez une question de santé dans votre langue et recevez une réponse claire.
-        Disponible en 8 langues d'Afrique : Akan, Amharique, Anglais (Éthiopie, Ghana, Kenya, Ouganda), Luganda, Swahili.</p>
-        </div>
-        """
+# 🌍 Assistant Santé Africain
+
+**Posez une question de santé, recevez une réponse claire — dans votre langue.**
+
+🇬🇭 Akan · 🇪🇹 Amharique · 🇪🇹🇬🇭🇰🇪🇺🇬 Anglais · 🇺🇬 Luganda · 🇰🇪 Swahili
+        """,
+        elem_id="hero",
+    )
+
+    gr.Markdown(
+        "**① Choisissez votre langue** &nbsp;→&nbsp; **② Écrivez votre question** &nbsp;→&nbsp; **③ Recevez votre réponse**",
+        elem_id="steps",
     )
 
     with gr.Row():
-        with gr.Column(scale=2):
-            question_input = gr.Textbox(
-                label="✏️ Votre question de santé",
-                placeholder="Exemple : Comment puis-je me protéger du paludisme ?",
-                lines=3
-            )
+        with gr.Column(scale=2, elem_id="ask-panel"):
+            gr.Markdown("### ✏️ Votre question")
             language_input = gr.Dropdown(
-                choices=[(LANGUAGE_NAMES[lg], lg) for lg in LANGUAGES],
+                choices=[(LANGUAGE_FLAGS[lg], lg) for lg in LANGUAGES],
                 value="Eng_Ken",
                 label="🌐 Langue"
             )
+            question_input = gr.Textbox(
+                label="Question de santé",
+                placeholder="Exemple : Comment puis-je me protéger du paludisme ?",
+                lines=3
+            )
             submit_btn = gr.Button("💬 Poser la question", variant="primary", elem_id="ask-btn")
-            gr.Markdown("⏳ *La réponse peut prendre 30 à 90 secondes, merci de patienter.*")
+            gr.Markdown("⏳ *La réponse peut prendre 30 à 90 secondes, merci de patienter.*", elem_id="wait-note")
             gr.Examples(
                 examples=EXAMPLES,
                 inputs=[question_input, language_input],
-                label="Exemples de questions",
+                label="💡 Exemples de questions",
             )
 
-        with gr.Column(scale=2):
-            answer_output = gr.Textbox(label="✅ Réponse", lines=6, elem_id="answer-box")
+        with gr.Column(scale=2, elem_id="answer-panel"):
+            gr.Markdown("### ✅ Votre réponse")
+            answer_output = gr.Textbox(label="", lines=6, elem_id="answer-box", show_label=False)
             with gr.Accordion("📚 Voir des cas similaires déjà répondus", open=False):
-                contexts_output = gr.Markdown(value="", visible=False)
+                contexts_output = gr.Markdown(value="", visible=False, elem_id="similar-cases")
 
     submit_btn.click(
         fn=answer_question,
@@ -260,9 +304,9 @@ with gr.Blocks(
     )
 
     gr.Markdown(
-        """
-        <p id="footer-note">🧑‍💻 Projet réalisé par Khadim Gueye · Assistant gratuit, à titre informatif uniquement — ne remplace pas l'avis d'un professionnel de santé.</p>
-        """
+        "🧑‍💻 Projet réalisé par Khadim Gueye · Assistant gratuit, à titre informatif uniquement — "
+        "ne remplace pas l'avis d'un professionnel de santé.",
+        elem_id="footer",
     )
 
 demo.queue(max_size=10).launch()
